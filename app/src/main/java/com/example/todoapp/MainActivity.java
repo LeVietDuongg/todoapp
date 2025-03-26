@@ -1,39 +1,34 @@
 package com.example.todoapp;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
-import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
-
 public class MainActivity extends AppCompatActivity {
-    private RecyclerView recyclerView;
-    private TaskAdapter adapter;
-    private List<Task> taskList;
-    private DatabaseHelper db;
+    private ViewPager2 viewPager;
+    private BottomNavigationView bottomNavigationView;
     private FloatingActionButton fab;
+    private DatabaseHelper db;
+    
+    private static final String PREF_NAME = "SixPathPrefs";
+    private static final String KEY_FIRST_RUN = "first_run";
+    private static final int NUM_PAGES = 4;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,167 +36,224 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         db = new DatabaseHelper(this);
-        recyclerView = findViewById(R.id.recyclerView);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        
-        // Set app title with blue theme
-        getSupportActionBar().setTitle("Công việc của tôi");
-        
-        // Set the FAB to create multiple random tasks
-        fab = findViewById(R.id.fab);
-        fab.setOnClickListener(v -> createMultipleRandomTasks());
-
-        loadTasks();
+        setupViews();
+        checkFirstRun();
     }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        int itemId = item.getItemId();
-        if (itemId == R.id.action_add) {
-            showAddTaskDialog();
-            return true;
-        } else if (itemId == R.id.action_delete_selected) {
-            deleteSelectedTasks();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    // Method to create multiple (5-10) random tasks with random times
-    private void createMultipleRandomTasks() {
-        Random random = new Random();
-        int count = random.nextInt(6) + 5; // Random number between 5 and 10
+    
+    private void setupViews() {
+        // Set up ViewPager and adapter
+        viewPager = findViewById(R.id.viewPager);
+        ScreenSlidePagerAdapter pagerAdapter = new ScreenSlidePagerAdapter(this);
+        viewPager.setAdapter(pagerAdapter);
         
-        for (int i = 0; i < count; i++) {
-            Task randomTask = Task.createRandomTask();
-            long id = db.addTask(randomTask);
-            if (id > 0) {
-                Task newTask = new Task((int) id, randomTask.getDescription(), 
-                        randomTask.getHour(), randomTask.getMinute());
-                scheduleNotification(newTask);
+        // Set up BottomNavigation
+        bottomNavigationView = findViewById(R.id.bottomNavigation);
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_tasks) {
+                viewPager.setCurrentItem(0);
+                return true;
+            } else if (itemId == R.id.nav_workout) {
+                viewPager.setCurrentItem(1);
+                return true;
+            } else if (itemId == R.id.nav_progress) {
+                viewPager.setCurrentItem(2);
+                return true;
+            } else if (itemId == R.id.nav_settings) {
+                viewPager.setCurrentItem(3);
+                return true;
             }
-        }
-        
-        loadTasks();
-        Toast.makeText(this, "Đã tạo " + count + " công việc ngẫu nhiên", Toast.LENGTH_SHORT).show();
-    }
-
-    // Method to manually add a task (not random)
-    private void showAddTaskDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Thêm công việc mới");
-        
-        // Set up the input
-        final EditText input = new EditText(this);
-        builder.setView(input);
-        
-        // Set up the buttons
-        builder.setPositiveButton("Chọn giờ", (dialog, which) -> {
-            String taskDescription = input.getText().toString().trim();
-            if (taskDescription.isEmpty()) {
-                Toast.makeText(MainActivity.this, "Vui lòng nhập mô tả công việc", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            
-            // Show time picker for manual selection
-            showTimePickerDialog(taskDescription, 
-                Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
-                Calendar.getInstance().get(Calendar.MINUTE));
+            return false;
         });
         
-        builder.setNegativeButton("Hủy", (dialog, which) -> dialog.cancel());
-        builder.show();
-    }
-
-    // Existing methods remain unchanged
-    private void showTimePickerDialog(String taskDescription, int defaultHour, int defaultMinute) {
-        // ...existing code...
-        TimePickerDialog timePickerDialog = new TimePickerDialog(
-            this,
-            (view, hourOfDay, minute) -> {
-                Task newTask = new Task(0, taskDescription, hourOfDay, minute);
-                long id = db.addTask(newTask);
-                if (id > 0) {
-                    newTask = new Task((int) id, taskDescription, hourOfDay, minute);
-                    scheduleNotification(newTask);
-                    loadTasks();
-                    Toast.makeText(this, "Đã tạo công việc mới", Toast.LENGTH_SHORT).show();
+        // ViewPager change listener to update bottom navigation
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                switch (position) {
+                    case 0:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_tasks);
+                        break;
+                    case 1:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_workout);
+                        break;
+                    case 2:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_progress);
+                        break;
+                    case 3:
+                        bottomNavigationView.setSelectedItemId(R.id.nav_settings);
+                        break;
                 }
-            },
-            defaultHour,
-            defaultMinute,
-            true
-        );
-        timePickerDialog.show();
-    }
-
-    private void deleteSelectedTasks() {
-        // ...existing code...
-        if (adapter == null) return;
+            }
+        });
         
-        List<Integer> selectedIds = adapter.getSelectedTaskIds();
-        if (selectedIds.isEmpty()) {
-            Toast.makeText(this, "Chưa chọn công việc nào để xóa", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        
-        new AlertDialog.Builder(this)
-            .setTitle("Xác nhận xóa")
-            .setMessage("Bạn có chắc muốn xóa " + selectedIds.size() + " công việc đã chọn?")
-            .setPositiveButton("Xóa", (dialog, which) -> {
-                db.deleteTasks(selectedIds);
-                loadTasks();
-                Toast.makeText(MainActivity.this, "Đã xóa các công việc đã chọn", Toast.LENGTH_SHORT).show();
-            })
-            .setNegativeButton("Hủy", null)
-            .show();
-    }
-
-    private void loadTasks() {
-        // ...existing code...
-        taskList = db.getAllTasks();
-        
-        // Sort tasks by time (nearest first)
-        Collections.sort(taskList, Comparator.comparingLong(Task::getTimeInMillis));
-        
-        adapter = new TaskAdapter(taskList);
-        recyclerView.setAdapter(adapter);
-        
-        // Apply item decorations for visual separation
-        recyclerView.addItemDecoration(new TaskItemDecoration(this));
-        
-        adapter.setOnItemClickListener(position -> {
-            Task task = taskList.get(position);
-            task.setSelected(!task.isSelected());
-            adapter.notifyItemChanged(position);
+        // Set up FAB
+        fab = findViewById(R.id.fab);
+        fab.setOnClickListener(v -> {
+            // Get current fragment
+            int currentPage = viewPager.getCurrentItem();
+            switch (currentPage) {
+                case 0: // Tasks tab
+                    showAddTaskDialog();
+                    break;
+                case 1: // Workout tab
+                    addRandomWorkoutTask();
+                    break;
+                case 2: // Progress tab
+                    // No action for progress tab
+                    break;
+                case 3: // Settings tab
+                    // No action for settings tab
+                    break;
+            }
         });
     }
     
-    private void scheduleNotification(Task task) {
-        // ...existing code...
+    private void checkFirstRun() {
+        SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        boolean isFirstRun = prefs.getBoolean(KEY_FIRST_RUN, true);
+        
+        if (isFirstRun) {
+            // Create initial workout schedule for 30 days
+            createInitial30DayWorkout();
+            
+            // Mark as not first run
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putBoolean(KEY_FIRST_RUN, false);
+            editor.apply();
+            
+            // Show welcome message
+            Toast.makeText(this, "Chào mừng đến với 30 Day Six Path Challenge!", Toast.LENGTH_LONG).show();
+        }
+    }
+    
+    private void createInitial30DayWorkout() {
+        // Create workout tasks for 30 days
+        for (int day = 1; day <= 30; day++) {
+            // Each day has 1-2 workout tasks
+            Task workoutTask = Task.createRandomWorkoutTask(day);
+            long id = db.addTask(workoutTask);
+            if (id > 0) {
+                workoutTask = new Task((int) id, workoutTask.getDescription(), 
+                        workoutTask.getHour(), workoutTask.getMinute(), 
+                        day, Task.TYPE_WORKOUT, "Workout");
+                scheduleNotification(workoutTask);
+            }
+            
+            // Each day has 1 habit task
+            Task habitTask = Task.createRandomHabitTask(day);
+            id = db.addTask(habitTask);
+            if (id > 0) {
+                habitTask = new Task((int) id, habitTask.getDescription(), 
+                        habitTask.getHour(), habitTask.getMinute(), 
+                        day, Task.TYPE_HABIT, "Habit");
+                scheduleNotification(habitTask);
+            }
+        }
+    }
+    
+    private void addRandomWorkoutTask() {
+        // Find highest day number
+        int maxDay = 1;
+        for (Task task : db.getTasksByType(Task.TYPE_WORKOUT)) {
+            maxDay = Math.max(maxDay, task.getDayNumber());
+        }
+        
+        // Add for next day
+        int nextDay = Math.min(maxDay + 1, 30);
+        Task workoutTask = Task.createRandomWorkoutTask(nextDay);
+        long id = db.addTask(workoutTask);
+        if (id > 0) {
+            workoutTask = new Task((int) id, workoutTask.getDescription(), 
+                    workoutTask.getHour(), workoutTask.getMinute(), 
+                    nextDay, Task.TYPE_WORKOUT, "Workout");
+            scheduleNotification(workoutTask);
+            
+            Toast.makeText(this, "Đã thêm bài tập cho Ngày " + nextDay, Toast.LENGTH_SHORT).show();
+            
+            // Refresh workout fragment
+            if (getSupportFragmentManager().findFragmentByTag("f1") != null) {
+                ((WorkoutFragment) getSupportFragmentManager().findFragmentByTag("f1")).refreshWorkouts();
+            }
+        }
+    }
+    
+    // Adapter for viewpager
+    private class ScreenSlidePagerAdapter extends FragmentStateAdapter {
+        public ScreenSlidePagerAdapter(FragmentActivity fa) {
+            super(fa);
+        }
+
+        @Override
+        public Fragment createFragment(int position) {
+            switch (position) {
+                case 0:
+                    return new TasksFragment();
+                case 1:
+                    return new WorkoutFragment();
+                case 2:
+                    return new ProgressFragment();
+                case 3:
+                    return new SettingsFragment();
+                default:
+                    return new TasksFragment();
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return NUM_PAGES;
+        }
+    }
+    
+    // Task notification methods
+    public void scheduleNotification(Task task) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, TaskAlarmReceiver.class);
         intent.putExtra("task_id", task.getId());
         intent.putExtra("task_description", task.getDescription());
-        
+
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                this, 
-                task.getId(), 
-                intent, 
+                this,
+                task.getId(),
+                intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        
+
         long alarmTimeMillis = task.getTimeInMillis();
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTimeMillis, pendingIntent);
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, alarmTimeMillis, pendingIntent);
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTimeMillis, pendingIntent);
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, alarmTimeMillis, pendingIntent);
+            }
+        } catch (SecurityException e) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (!alarmManager.canScheduleExactAlarms()) {
+                    Toast.makeText(this, "Không thể đặt báo thức chính xác", Toast.LENGTH_SHORT).show();
+                }
+            }
         }
+    }
+    
+    // Add task dialog - simplified from original implementation
+    private void showAddTaskDialog() {
+        // Fragment will handle this
+        if (getSupportFragmentManager().findFragmentByTag("f0") != null) {
+            ((TasksFragment) getSupportFragmentManager().findFragmentByTag("f0")).showAddTaskDialog();
+        }
+    }
+
+    // Add getter methods for fragments
+    public TasksFragment getTasksFragment() {
+        return (TasksFragment) getSupportFragmentManager().findFragmentByTag("f" + 0);
+    }
+    
+    public WorkoutFragment getWorkoutFragment() {
+        return (WorkoutFragment) getSupportFragmentManager().findFragmentByTag("f" + 1);
+    }
+    
+    public ProgressFragment getProgressFragment() {
+        return (ProgressFragment) getSupportFragmentManager().findFragmentByTag("f" + 2);
     }
 }

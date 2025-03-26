@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.os.VibratorManager;
 
 import androidx.core.app.NotificationCompat;
 
@@ -38,12 +39,30 @@ public class TaskAlarmReceiver extends BroadcastReceiver {
 
         notificationManager.notify(taskId, builder.build());
         
-        // Vibrate the device
-        Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, -1));
+        // Vibrate the device using non-deprecated methods
+        vibrate(context);
+    }
+    
+    private void vibrate(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // For Android 12 and above, use VibratorManager
+            VibratorManager vibratorManager = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+            if (vibratorManager != null) {
+                Vibrator vibrator = vibratorManager.getDefaultVibrator();
+                vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, -1));
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // For Android 8.0 to 11
+            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null) {
+                vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, -1));
+            }
         } else {
-            vibrator.vibrate(VIBRATION_PATTERN, -1);
+            // For Android 7.1 and below
+            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null) {
+                vibrator.vibrate(VIBRATION_PATTERN, -1);
+            }
         }
     }
     

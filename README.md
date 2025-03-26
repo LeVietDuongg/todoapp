@@ -1,64 +1,54 @@
-Collecting workspace information# Ứng dụng Quản lý Công việc (Todo App)
+# Ứng dụng Quản lý Công việc
 
 ## Giới thiệu
 
-Đây là ứng dụng Quản lý Công việc được phát triển trên nền tảng Android. Ứng dụng giúp người dùng tạo, theo dõi và quản lý các công việc cần làm một cách hiệu quả.
+Đây là ứng dụng giúp bạn quản lý các công việc hàng ngày trên điện thoại Android. Với ứng dụng này, bạn có thể dễ dàng tạo danh sách việc cần làm, nhận thông báo nhắc nhở, và theo dõi tiến độ công việc của mình.
 
-## Tính năng chính
+## Các tính năng chính
 
-- **Tạo công việc mới**: Thêm công việc với mô tả và thời gian cụ thể
-- **Tạo công việc ngẫu nhiên**: Tự động tạo 5-10 công việc ngẫu nhiên với thời gian ngẫu nhiên
-- **Thông báo nhắc nhở**: Nhận thông báo khi đến thời gian thực hiện công việc
-- **Quản lý công việc**: Chọn và xóa các công việc không cần thiết
-- **Sắp xếp theo thời gian**: Các công việc được sắp xếp theo thứ tự thời gian
-- **Giao diện trực quan**: Màu nền xen kẽ giúp dễ phân biệt các công việc
+- **Thêm công việc mới**: Ghi lại những việc cần làm cùng thời gian thực hiện
+- **Thông báo nhắc nhở**: Nhận thông báo khi đến giờ làm việc
+- **Theo dõi tiến độ**: Xem được bao nhiêu phần trăm công việc đã hoàn thành
+- **Lịch tập luyện 30 ngày**: Tự động tạo kế hoạch tập luyện trong 30 ngày
+- **Quản lý thói quen**: Theo dõi và duy trì các thói quen tốt
 
-## Yêu cầu hệ thống
+## Cài đặt ứng dụng
 
-- Android 8.0 (API level 23) trở lên
-- Quyền truy cập thông báo và báo thức
+1. Tải file APK từ mục "Releases" trên GitHub
+2. Mở file APK trên điện thoại Android và cài đặt
+3. Cho phép ứng dụng gửi thông báo khi được yêu cầu
 
-## Cài đặt
+## Cách sử dụng
 
-1. Tải xuống tệp APK từ mục Releases
-2. Mở tệp APK và cài đặt ứng dụng trên thiết bị Android
+### Thêm công việc mới
+- Nhấn nút "+" ở góc màn hình
+- Điền thông tin công việc và chọn thời gian
+- Nhấn "Lưu" để thêm vào danh sách
 
-Đối với nhà phát triển:
+### Xem danh sách công việc
+- Màn hình chính hiển thị tất cả công việc cần làm
+- Công việc được sắp xếp theo thời gian, dễ dàng nhận biết nhờ màu sắc khác nhau
+- Đánh dấu hoàn thành bằng cách nhấn vào ô vuông bên cạnh công việc
 
-1. Clone repository này về máy tính
-2. Mở dự án với Android Studio
-3. Đồng bộ Gradle và cài đặt các dependencies
-4. Build và chạy ứng dụng trên thiết bị hoặc máy ảo
+### Theo dõi lịch tập luyện
+- Chuyển sang tab "Tập luyện" để xem lịch 30 ngày
+- Các bài tập được tự động tạo cho từng ngày
+- Đánh dấu hoàn thành để ghi nhận tiến độ
 
-## Hướng dẫn sử dụng
+### Xem thống kê tiến độ
+- Vào tab "Tiến độ" để xem biểu đồ
+- Theo dõi phần trăm hoàn thành mỗi ngày
+- Nhìn thấy xu hướng hoàn thành công việc theo thời gian
 
-### 1. Thêm công việc mới
-- Nhấn nút "+" trên thanh công cụ
-- Nhập mô tả công việc và nhấn "Chọn giờ"
-- Chọn thời gian cho công việc và nhấn "OK"
-- Công việc sẽ được thêm vào danh sách và sắp xếp theo thời gian
+## Yêu cầu thiết bị
 
-### 2. Tạo công việc ngẫu nhiên
-- Nhấn nút dấu + tròn ở góc phải dưới màn hình
-- Ứng dụng sẽ tự động tạo 5-10 công việc ngẫu nhiên với thời gian ngẫu nhiên
+- Điện thoại Android phiên bản 8.0 trở lên
+- Cần cấp quyền gửi thông báo và đặt báo thức
 
-### 3. Chọn và xóa công việc
-- Đánh dấu chọn công việc bằng cách nhấn vào ô checkbox
-- Nhấn nút "Xóa đã chọn" trên thanh công cụ để xóa các công việc đã chọn
-- Xác nhận xóa khi được hỏi
+## Liên hệ hỗ trợ
 
-### 4. Nhận thông báo
-- Ứng dụng sẽ tự động hiển thị thông báo khi đến thời gian của công việc
-- Thiết bị sẽ rung để nhắc nhở bạn về công việc cần làm
-
-### 5. Sắp xếp công việc
-- Các công việc tự động được sắp xếp theo thứ tự thời gian gần nhất
-- Màu nền xen kẽ giúp dễ dàng phân biệt các công việc trong danh sách
+Email: le4465520@gmail.com
 
 ## Giấy phép
 
-Dự án này được phân phối dưới Giấy phép MIT. Xem tệp `LICENSE` để biết thêm thông tin.
-
-## Liên hệ
-
-Email: le4465520@gmail.com
+Phần mềm này được phát hành theo giấy phép MIT.
