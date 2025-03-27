@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.Collections;
 import java.util.List;
 
 public class WorkoutFragment extends Fragment {
@@ -46,6 +47,20 @@ public class WorkoutFragment extends Fragment {
     
     public void refreshWorkouts() {
         workoutList = db.getTasksByType(Task.TYPE_WORKOUT);
+        
+        // Sắp xếp danh sách theo thời gian
+        Collections.sort(workoutList, (task1, task2) -> {
+            // Đầu tiên so sánh theo ngày
+            int dayCompare = Integer.compare(task1.getDayNumber(), task2.getDayNumber());
+            if (dayCompare != 0) return dayCompare;
+            
+            // Nếu cùng ngày, so sánh theo giờ
+            int hourCompare = Integer.compare(task1.getHour(), task2.getHour());
+            if (hourCompare != 0) return hourCompare;
+            
+            // Nếu cùng giờ, so sánh theo phút
+            return Integer.compare(task1.getMinute(), task2.getMinute());
+        });
         
         adapter = new TaskAdapter(workoutList);
         recyclerView.setAdapter(adapter);

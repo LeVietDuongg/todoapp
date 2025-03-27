@@ -9,7 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
+
 import java.util.List;
 import java.util.Locale;
 
@@ -29,6 +29,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_PRIORITY = "priority";
     private static final String KEY_COMPLETED = "completed";
     private static final String KEY_TYPE = "type";
+    private static final String KEY_HOUR = "hour";
+    private static final String KEY_MINUTE = "minute";
+    private static final String KEY_DAY_NUMBER = "day_number";
+    private static final String KEY_TASK_TYPE = "task_type";
+    private static final String KEY_CATEGORY = "category";
 
     // Task History Table Columns
     private static final String KEY_TASK_ID = "task_id";
@@ -47,7 +52,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + KEY_DATE + " TEXT,"
                 + KEY_PRIORITY + " INTEGER,"
                 + KEY_COMPLETED + " INTEGER,"
-                + KEY_TYPE + " INTEGER DEFAULT 0" + ")";
+                + KEY_TYPE + " INTEGER DEFAULT 0,"
+                + KEY_HOUR + " INTEGER DEFAULT 0,"
+                + KEY_MINUTE + " INTEGER DEFAULT 0,"
+                + KEY_DAY_NUMBER + " INTEGER DEFAULT 0,"
+                + KEY_TASK_TYPE + " INTEGER DEFAULT 0,"
+                + KEY_CATEGORY + " TEXT" + ")";
         db.execSQL(CREATE_TASKS_TABLE);
 
         String CREATE_TASK_HISTORY_TABLE = "CREATE TABLE " + TABLE_TASK_HISTORY + "("
@@ -65,10 +75,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
     
-    // Phương thức này sẽ trả về thống kê tiến độ hoàn thành
-    // Trả về một mảng int[31] với:
-    // - index 0: tổng tiến độ (phần trăm)
-    // - index 1-30: phần trăm hoàn thành cho mỗi ngày trong 30 ngày gần nhất
+
     public int[] getCompletionStats() {
         int[] stats = new int[31]; // 0: tổng tiến độ, 1-30: tiến độ theo ngày
         
@@ -120,12 +127,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public long addTask(Task task) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
+        
+        // Lưu các thông tin cơ bản
         values.put(KEY_TITLE, task.getTitle());
         values.put(KEY_DESCRIPTION, task.getDescription());
         values.put(KEY_DATE, task.getDate());
         values.put(KEY_PRIORITY, task.getPriority());
         values.put(KEY_COMPLETED, task.isCompleted() ? 1 : 0);
         values.put(KEY_TYPE, task.getType());
+        
+        // Lưu thêm thông tin về giờ và phút
+        values.put(KEY_HOUR, task.getHour());
+        values.put(KEY_MINUTE, task.getMinute());
+        
+        // Lưu thông tin thêm nếu là nhiệm vụ tập luyện/thói quen
+        values.put(KEY_DAY_NUMBER, task.getDayNumber());
+        values.put(KEY_TASK_TYPE, task.getTaskType());
+        values.put(KEY_CATEGORY, task.getCategory());
         
         long id = db.insert(TABLE_TASKS, null, values);
         db.close();
@@ -146,7 +164,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         List<Task> tasks = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
         
-        String sortOrder = KEY_DATE + " ASC";
+        // Sắp xếp theo ngày và giờ
+        String sortOrder = KEY_DATE + " ASC, " + KEY_HOUR + " ASC, " + KEY_MINUTE + " ASC";
         Cursor cursor = db.query(TABLE_TASKS, null, null, null, null, null, sortOrder);
         
         if (cursor.moveToFirst()) {
@@ -159,49 +178,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
         return tasks;
     }
-    
-    public List<Task> getTasksByPriority(int priority) {
-        List<Task> tasks = new ArrayList<>();
+
+    // Thêm phương thức để lấy ngày cao nhất trong danh sách công việc
+    public int getMaxDayNumber() {
+        int maxDay = 0;
         SQLiteDatabase db = this.getReadableDatabase();
         
-        String selection = KEY_PRIORITY + " = ?";
-        String[] selectionArgs = { String.valueOf(priority) };
-        String sortOrder = KEY_DATE + " ASC";
-        
-        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null, sortOrder);
+        String query = "SELECT MAX(" + KEY_DAY_NUMBER + ") FROM " + TABLE_TASKS;
+        Cursor cursor = db.rawQuery(query, null);
         
         if (cursor.moveToFirst()) {
-            do {
-                tasks.add(getTaskFromCursor(cursor));
-            } while (cursor.moveToNext());
+            maxDay = cursor.getInt(0);
         }
         
         cursor.close();
         db.close();
-        return tasks;
+        return maxDay;
     }
-    
-    public List<Task> getTasksByDate(String date) {
-        List<Task> tasks = new ArrayList<>();
-        SQLiteDatabase db = this.getReadableDatabase();
-        
-        String selection = KEY_DATE + " = ?";
-        String[] selectionArgs = { date };
-        String sortOrder = KEY_PRIORITY + " ASC";
-        
-        Cursor cursor = db.query(TABLE_TASKS, null, selection, selectionArgs, null, null, sortOrder);
-        
-        if (cursor.moveToFirst()) {
-            do {
-                tasks.add(getTaskFromCursor(cursor));
-            } while (cursor.moveToNext());
-        }
-        
-        cursor.close();
-        db.close();
-        return tasks;
-    }
-    
+
+
+
     public List<Task> getTasksByType(int type) {
         List<Task> tasks = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
@@ -239,14 +235,35 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // TYPE column might not exist in older database versions
         }
         
-        return new Task(id, title, description, date, priority, completed, type);
+        // Đọc thông tin về giờ và phút
+        int hour = 0;
+        int minute = 0;
+        int dayNumber = 0;
+        int taskType = Task.TYPE_NORMAL;
+        String category = "General";
+        
+        try {
+            hour = cursor.getInt(cursor.getColumnIndexOrThrow(KEY_HOUR));
+            minute = cursor.getInt(cursor.getColumnIndexOrThrow(KEY_MINUTE));
+            dayNumber = cursor.getInt(cursor.getColumnIndexOrThrow(KEY_DAY_NUMBER));
+            taskType = cursor.getInt(cursor.getColumnIndexOrThrow(KEY_TASK_TYPE));
+            category = cursor.getString(cursor.getColumnIndexOrThrow(KEY_CATEGORY));
+        } catch (IllegalArgumentException e) {
+
+        }
+        
+        // Tạo task với đầy đủ thông tin
+        Task task = new Task(id, description, hour, minute, dayNumber, taskType, category);
+        task.setTitle(title);
+        task.setDate(date);
+        task.setPriority(priority);
+        task.setCompleted(completed);
+        task.setType(type);
+        
+        return task;
     }
 
-    public void deleteTask(int taskId) {
-        SQLiteDatabase db = this.getWritableDatabase();
-        db.delete(TABLE_TASKS, KEY_ID + " = ?", new String[] { String.valueOf(taskId) });
-        db.close();
-    }
+
     
     public void deleteTasks(List<Integer> taskIds) {
         if (taskIds.isEmpty()) return;
@@ -271,7 +288,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
     }
 
-    // Thêm phương thức để xóa tất cả các task
+
     public int deleteAllTasks() {
         SQLiteDatabase db = this.getWritableDatabase();
         
@@ -286,18 +303,5 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     // Phương thức để xóa tất cả các task đã hoàn thành
-    public int deleteCompletedTasks() {
-        SQLiteDatabase db = this.getWritableDatabase();
-        
-        // Tìm và xóa các bản ghi lịch sử liên quan đến các task đã hoàn thành
-        String taskHistoryWhereClause = KEY_TASK_ID + " IN (SELECT " + KEY_ID + " FROM " + 
-                TABLE_TASKS + " WHERE " + KEY_COMPLETED + " = 1)";
-        db.delete(TABLE_TASK_HISTORY, taskHistoryWhereClause, null);
-        
-        // Xóa các task đã hoàn thành
-        int count = db.delete(TABLE_TASKS, KEY_COMPLETED + " = 1", null);
-        
-        db.close();
-        return count;
-    }
+
 }

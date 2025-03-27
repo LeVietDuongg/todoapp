@@ -20,6 +20,8 @@ import android.widget.Toast;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.util.Calendar;
+
 public class MainActivity extends AppCompatActivity {
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
@@ -132,21 +134,38 @@ public class MainActivity extends AppCompatActivity {
         for (int day = 1; day <= 30; day++) {
             // Each day has 1-2 workout tasks
             Task workoutTask = Task.createRandomWorkoutTask(day);
+            
+            // Đặt các thông tin bổ sung
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.DAY_OF_MONTH, day - 1);  // Đặt ngày dựa vào số ngày
+            String dateStr = String.format("%04d-%02d-%02d", 
+                cal.get(Calendar.YEAR), 
+                cal.get(Calendar.MONTH) + 1, 
+                cal.get(Calendar.DAY_OF_MONTH));
+            
+            workoutTask.setTitle("Workout ngày " + day);
+            workoutTask.setDate(dateStr);
+            workoutTask.setPriority(2);  // Ưu tiên cao hơn
+            workoutTask.setType(Task.TYPE_WORKOUT);
+            
             long id = db.addTask(workoutTask);
             if (id > 0) {
-                workoutTask = new Task((int) id, workoutTask.getDescription(), 
-                        workoutTask.getHour(), workoutTask.getMinute(), 
-                        day, Task.TYPE_WORKOUT, "Workout");
+                workoutTask.setId((int) id);
                 scheduleNotification(workoutTask);
             }
             
             // Each day has 1 habit task
             Task habitTask = Task.createRandomHabitTask(day);
+            
+            // Đặt các thông tin bổ sung
+            habitTask.setTitle("Thói quen ngày " + day);
+            habitTask.setDate(dateStr);
+            habitTask.setPriority(1);
+            habitTask.setType(Task.TYPE_HABIT);
+            
             id = db.addTask(habitTask);
             if (id > 0) {
-                habitTask = new Task((int) id, habitTask.getDescription(), 
-                        habitTask.getHour(), habitTask.getMinute(), 
-                        day, Task.TYPE_HABIT, "Habit");
+                habitTask.setId((int) id);
                 scheduleNotification(habitTask);
             }
         }
@@ -154,19 +173,28 @@ public class MainActivity extends AppCompatActivity {
     
     private void addRandomWorkoutTask() {
         // Find highest day number
-        int maxDay = 1;
-        for (Task task : db.getTasksByType(Task.TYPE_WORKOUT)) {
-            maxDay = Math.max(maxDay, task.getDayNumber());
-        }
+        int maxDay = db.getMaxDayNumber();
         
         // Add for next day
         int nextDay = Math.min(maxDay + 1, 30);
         Task workoutTask = Task.createRandomWorkoutTask(nextDay);
+        
+        // Đặt các thông tin bổ sung
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_MONTH, nextDay - 1);  // Đặt ngày dựa vào số ngày
+        String dateStr = String.format("%04d-%02d-%02d", 
+            cal.get(Calendar.YEAR), 
+            cal.get(Calendar.MONTH) + 1, 
+            cal.get(Calendar.DAY_OF_MONTH));
+        
+        workoutTask.setTitle("Workout ngày " + nextDay);
+        workoutTask.setDate(dateStr);
+        workoutTask.setPriority(2);  // Ưu tiên cao hơn
+        workoutTask.setType(Task.TYPE_WORKOUT);
+        
         long id = db.addTask(workoutTask);
         if (id > 0) {
-            workoutTask = new Task((int) id, workoutTask.getDescription(), 
-                    workoutTask.getHour(), workoutTask.getMinute(), 
-                    nextDay, Task.TYPE_WORKOUT, "Workout");
+            workoutTask.setId((int) id);
             scheduleNotification(workoutTask);
             
             Toast.makeText(this, "Đã thêm bài tập cho Ngày " + nextDay, Toast.LENGTH_SHORT).show();

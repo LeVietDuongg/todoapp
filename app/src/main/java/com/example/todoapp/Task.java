@@ -181,8 +181,21 @@ public class Task {
 
         Random random = new Random();
         String taskDesc = randomTasks[random.nextInt(randomTasks.length)];
-        int hour = random.nextInt(24);
-        int minute = random.nextInt(60);
+        
+        // Tạo thời gian ngẫu nhiên hợp lý (giữa 6:00 và 22:00)
+        int hour = 6 + random.nextInt(16);  // 6 đến 22 giờ
+        int minute = random.nextInt(4) * 15; // 0, 15, 30, hoặc 45 phút
+        
+        // Đảm bảo thời gian trong tương lai
+        Calendar calendar = Calendar.getInstance();
+        int currentHour = calendar.get(Calendar.HOUR_OF_DAY);
+        int currentMinute = calendar.get(Calendar.MINUTE);
+        
+        if (hour < currentHour || (hour == currentHour && minute <= currentMinute)) {
+            // Nếu thời gian đã qua, đặt cho ngày hôm sau
+            hour = (currentHour + 1 + random.nextInt(6)) % 24; // 1-6 giờ kể từ bây giờ
+            minute = random.nextInt(4) * 15; // 0, 15, 30, hoặc 45 phút
+        }
 
         return new Task(0, taskDesc, hour, minute);
     }

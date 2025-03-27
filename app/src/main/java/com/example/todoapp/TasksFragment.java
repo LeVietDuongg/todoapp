@@ -112,9 +112,12 @@ public class TasksFragment extends Fragment {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Thêm công việc mới");
 
-        final EditText input = new EditText(getContext());
-        builder.setView(input);
+        // Tạo view cho dialog từ layout
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_add_task, null);
+        final EditText input = dialogView.findViewById(R.id.editTextTaskDescription);
+        builder.setView(dialogView);
 
+        // Thêm các nút
         builder.setPositiveButton("Chọn giờ", (dialog, which) -> {
             String taskDescription = input.getText().toString().trim();
             if (taskDescription.isEmpty()) {
@@ -122,9 +125,43 @@ public class TasksFragment extends Fragment {
                 return;
             }
 
-            showTimePickerDialog(taskDescription,
-                    Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
-                    Calendar.getInstance().get(Calendar.MINUTE));
+            // Hiển thị hộp thoại chọn giờ với giờ hiện tại
+            Calendar cal = Calendar.getInstance();
+            showTimePickerDialog(taskDescription, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE));
+        });
+
+        builder.setNeutralButton("Tạo ngẫu nhiên", (dialog, which) -> {
+            // Lấy ngày cao nhất hiện tại
+            int maxDay = db.getMaxDayNumber();
+            int nextDay = maxDay + 1;
+            
+            // Tạo công việc ngẫu nhiên
+            Task randomTask = Task.createRandomTask();
+            
+            // Đặt các thông tin bổ sung
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.DAY_OF_MONTH, nextDay - 1);  // Ngày tăng dần
+            String dateStr = String.format("%04d-%02d-%02d", 
+                cal.get(Calendar.YEAR), 
+                cal.get(Calendar.MONTH) + 1, 
+                cal.get(Calendar.DAY_OF_MONTH));
+            
+            randomTask.setTitle(randomTask.getDescription());  // Đặt tiêu đề giống với mô tả
+            randomTask.setDate(dateStr);  // Đặt ngày tăng dần
+            randomTask.setPriority(1);    // Mức ưu tiên mặc định
+            randomTask.setType(Task.TYPE_NORMAL);
+            randomTask.setDayNumber(nextDay);  // Đặt số ngày tăng dần
+            
+            long id = db.addTask(randomTask);
+            if (id > 0) {
+                randomTask.setId((int) id);
+                ((MainActivity) getActivity()).scheduleNotification(randomTask);
+                loadTasks();
+                Toast.makeText(getContext(), 
+                    "Đã tạo công việc ngày " + nextDay + ": " + randomTask.getDescription() + 
+                    " lúc " + randomTask.getTimeString(), 
+                    Toast.LENGTH_SHORT).show();
+            }
         });
 
         builder.setNegativeButton("Hủy", (dialog, which) -> dialog.cancel());
@@ -135,13 +172,28 @@ public class TasksFragment extends Fragment {
         TimePickerDialog timePickerDialog = new TimePickerDialog(
                 getContext(),
                 (view, hourOfDay, minute) -> {
+                    // Tạo task mới với thông tin đầy đủ
+                    Calendar cal = Calendar.getInstance();
+                    String dateStr = String.format("%04d-%02d-%02d", 
+                        cal.get(Calendar.YEAR), 
+                        cal.get(Calendar.MONTH) + 1, 
+                        cal.get(Calendar.DAY_OF_MONTH));
+                    
                     Task newTask = new Task(0, taskDescription, hourOfDay, minute);
+                    newTask.setTitle(taskDescription);  // Đặt tiêu đề giống với mô tả
+                    newTask.setDate(dateStr);  // Đặt ngày hiện tại
+                    newTask.setPriority(1);    // Mức ưu tiên mặc định
+                    newTask.setType(Task.TYPE_NORMAL);
+                    
                     long id = db.addTask(newTask);
                     if (id > 0) {
-                        newTask = new Task((int) id, taskDescription, hourOfDay, minute);
+                        newTask.setId((int) id);
                         ((MainActivity) getActivity()).scheduleNotification(newTask);
                         loadTasks();
-                        Toast.makeText(getContext(), "Đã tạo công việc mới", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), 
+                            "Đã tạo công việc '" + taskDescription + "' lúc " + 
+                            String.format("%02d:%02d", hourOfDay, minute), 
+                            Toast.LENGTH_SHORT).show();
                     }
                 },
                 defaultHour,
